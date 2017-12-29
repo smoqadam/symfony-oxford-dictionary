@@ -6,6 +6,7 @@ use App\Entity\Word;
 use App\Service\DictionaryService;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
 class HomeController extends Controller
@@ -20,19 +21,19 @@ class HomeController extends Controller
      */
     public function translate(DictionaryService $dictionaryService, $word)
     {
-        $wordRepository = $this->getDoctrine()->getRepository('App\Entity\Word');
+        try{
+            $content =$dictionaryService->fetchPage($dictionaryService->normalizeWord($word));
+            $definition = $dictionaryService->getDefinitions($word);
+            if ($definition === null) {
+                $definition = $dictionaryService->crawlContent($content);
+                $dictionaryService->save($definition);
+            }
 
-        $definition = null;//$dictionaryService->getDefinitions($word);
-        if ($definition === null) {
-            $definition = $dictionaryService->translate($word);
-            dump($definition);die();
-            $dictionaryService->save($definition);
+            return new JsonResponse($definition);
+        } catch (NotFoundHttpException $notFoundHttpException){
+            return new JsonResponse(['The word you\'re looking for did not find'], 404);
+        } catch (\Exception $exception){
+            return new JsonResponse(['Something went wrong'], 500);
         }
-
-        dump($definition);
-        return new JsonResponse([
-            'word' => $word,
-            'def' => $definition,
-        ]);
     }
 }
