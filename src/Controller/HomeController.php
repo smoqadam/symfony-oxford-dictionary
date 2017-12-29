@@ -22,7 +22,7 @@ class HomeController extends Controller
     {
         $wordRepository = $this->getDoctrine()->getRepository('App\Entity\Word');
 
-        $definition = $dictionaryService->getDefinitions($word);
+        $definition = null;//$dictionaryService->getDefinitions($word);
         if ($definition === null) {
             $definition = $dictionaryService->translate($word);
             dump($definition);die();

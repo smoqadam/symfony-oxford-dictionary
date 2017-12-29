@@ -35,16 +35,14 @@ class DictionaryService
     public function translate($word)
     {
         $crawler = new Crawler($this->fetchPage($word));
-
         $definition = [];
-
         $definition['word'] = $crawler->filter('div.webtop-g h2')->text();
         $definition['pos'] = $crawler->filter('div.webtop-g span.pos')->text();
         $definition['pron'] = $crawler->filter('div.pron-gs')->text();
 
-
-        $crawler->filter('#entryContent li.sn-g')->each(function (Crawler $node, $i) use (&$definition, $crawler) {
+        $crawler->filter('#entryContent .sn-g')->each(function (Crawler $node, $i) use (&$definition, $crawler) {
             $def = $node->filter('span.def')->text();
+            $definition['definitions'][$def] = [];
             $node->filter('span.x-g')->each(function (Crawler $span, $i) use (&$definition, $def) {
                 $definition['definitions'][$def]['examples'][] = $span->filter('span.x-g')->text();
             });
@@ -52,7 +50,6 @@ class DictionaryService
 
         return $definition;
     }
-
 
 
     public function save($definition)
@@ -67,7 +64,6 @@ class DictionaryService
         $wordEntity->setUpdatedAt(new \DateTime());
         $wordEntity->setCreatedAt(new \DateTime());
         $em->persist($wordEntity);
-//        dump($wordEntity->getId())f;die();
         foreach ($definition['definitions'] as $definition => $examples) {
             $definitionEntity = new Definition();
             $definitionEntity->setDefinition($definition);
@@ -87,8 +83,6 @@ class DictionaryService
         }
         $em->flush();
         $em->clear();
-//        $em->flush();
-
     }
 
     public function getDefinitions($word)
