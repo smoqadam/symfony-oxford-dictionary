@@ -4,13 +4,15 @@ namespace App\Entity;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation\Exclude;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\DefinitionRepository")
  */
-class Definition
+class Definition implements \JsonSerializable
 {
     /**
+     * @Exclude
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
@@ -18,6 +20,7 @@ class Definition
     private $id;
 
     /**
+     * @Exclude
      * @ORM\ManyToOne(targetEntity="Word", inversedBy="definitions", cascade={"persist"})
      */
     private $word;
@@ -33,22 +36,25 @@ class Definition
     private $examples;
 
     /**
+     * @Exclude
      * @ORM\Column(type="datetime")
      */
     private $createdAt;
 
     /**
+     * @Exclude
      * @ORM\Column(type="datetime")
      */
     private $updatedAt;
 
 
-//
-//    function __construct()
-//    {
-//        $this->examples = new ArrayCollection();
-//    }
+    function __construct()
+    {
+        $this->examples = new ArrayCollection();
+    }
+
     /**
+     * @Exclude
      * @return mixed
      */
     public function getId()
@@ -105,11 +111,11 @@ class Definition
     }
 
     /**
-     * @param Example  $examples
+     * @param Example $examples
      */
     public function setExamples(Example $examples)
     {
-        $this->examples = $examples;
+        $this->examples->add($examples);
     }
 
     /**
@@ -144,5 +150,22 @@ class Definition
         $this->updatedAt = $updatedAt;
     }
 
-
+    /**
+     * Specify data which should be serialized to JSON.
+     *
+     * @see http://php.net/manual/en/jsonserializable.jsonserialize.php
+     *
+     * @return mixed data which can be serialized by <b>json_encode</b>,
+     *               which is a value of any type other than a resource
+     *
+     * @since 5.4.0
+     */
+    public function jsonSerialize()
+    {
+        return [
+            'word' => $this->word,
+            'definition' => $this->definition,
+            'examples' => $this->examples,
+        ];
+    }
 }

@@ -2,16 +2,19 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation\Exclude;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\WordRepository")
  */
-class Word
+class Word implements \JsonSerializable
 {
     const SOURCE_OXFORD = 'oxford';
 
     /**
+     * @Exclude
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
@@ -24,12 +27,13 @@ class Word
     private $word;
 
     /**
+     * @Exclude
      * @ORM\Column(type="string")
-     *
      */
     private $savedFrom;
 
     /**
+     * @Exclude
      * @ORM\Column(type="string")
      */
     private $source;
@@ -45,11 +49,13 @@ class Word
     private $partsOfSpeech;
 
     /**
+     * @Exclude
      * @ORM\Column(type="datetime")
      */
     private $createdAt;
 
     /**
+     * @Exclude
      * @ORM\Column(type="datetime")
      */
     private $updatedAt;
@@ -59,13 +65,17 @@ class Word
      */
     private $definitions;
 
-
     /**
      * @return mixed
      */
     public function getId()
     {
         return $this->id;
+    }
+
+    function __construct()
+    {
+        $this->definitions = new ArrayCollection();
     }
 
     /**
@@ -201,8 +211,26 @@ class Word
      */
     public function setDefinitions(Definition $definitions)
     {
-        $this->definitions = $definitions;
+        $this->definitions->add($definitions);
     }
 
-
+    /**
+     * Specify data which should be serialized to JSON.
+     *
+     * @see http://php.net/manual/en/jsonserializable.jsonserialize.php
+     *
+     * @return mixed data which can be serialized by <b>json_encode</b>,
+     *               which is a value of any type other than a resource
+     *
+     * @since 5.4.0
+     */
+    public function jsonSerialize()
+    {
+        return [
+            'word' => $this->word,
+            'pos' => $this->partsOfSpeech,
+            'definitions' => $this->definitions,
+            'pron' => $this->pronunciation,
+        ];
+    }
 }

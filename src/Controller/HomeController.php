@@ -3,9 +3,12 @@
 namespace App\Controller;
 
 use App\Entity\Word;
-use App\Service\DictionaryService;
+use App\Service\DictionaryProviderInterface;
+use App\Service\OxfordDictionaryService;
+use JMS\Serializer\SerializerBuilder;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
@@ -14,26 +17,26 @@ class HomeController extends Controller
     /**
      * @Route("/{word}", name="home")
      *
-     * @param DictionaryService $dictionaryService
+     * @param DictionaryProviderInterface $dictionaryService
      * @param $word
      *
-     * @return JsonResponse
+     * @return Response
      */
-    public function translate(DictionaryService $dictionaryService, $word)
+    public function translate(DictionaryProviderInterface $dictionaryService, $word)
     {
-        try{
-            $content =$dictionaryService->fetchPage($dictionaryService->normalizeWord($word));
-            $definition = $dictionaryService->getDefinitions($word);
-            if ($definition === null) {
-                $definition = $dictionaryService->crawlContent($content);
-                $dictionaryService->save($definition);
-            }
+        try {
+            $definition = $dictionaryService->translate($word);
 
-            return new JsonResponse($definition);
-        } catch (NotFoundHttpException $notFoundHttpException){
+            $serializer = SerializerBuilder::create()->build();
+            $result = $serializer->serialize($definition, 'json');
+
+            return new Response($result, 200, [
+                'Content-Type' => 'application/json',
+            ]);
+        } catch (NotFoundHttpException $notFoundHttpException) {
             return new JsonResponse(['The word you\'re looking for did not find'], 404);
-        } catch (\Exception $exception){
-            return new JsonResponse(['Something went wrong'], 500);
+        } catch (\Exception $exception) {
+            return new JsonResponse(['Something went wrong '.$exception->getMessage()], 500);
         }
     }
 }

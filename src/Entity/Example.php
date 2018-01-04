@@ -3,13 +3,15 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use JMS\Serializer\Annotation\Exclude;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\ExampleRepository")
  */
-class Example
+class Example implements \JsonSerializable
 {
     /**
+     * @Exclude
      * @ORM\Id
      * @ORM\GeneratedValue
      * @ORM\Column(type="integer")
@@ -17,6 +19,7 @@ class Example
     private $id;
 
     /**
+     * @Exclude
      * @ORM\ManyToOne(targetEntity="Definition", inversedBy="examples", cascade={"persist"})
      */
     private $definition;
@@ -27,11 +30,13 @@ class Example
     private $example;
 
     /**
+     * @Exclude
      * @ORM\Column(type="datetime")
      */
     private $createdAt;
 
     /**
+     * @Exclude
      * @ORM\Column(type="datetime")
      */
     private $updatedAt;
@@ -116,4 +121,18 @@ class Example
         $this->updatedAt = $updatedAt;
     }
 
+    /**
+     * Specify data which should be serialized to JSON
+     * @link http://php.net/manual/en/jsonserializable.jsonserialize.php
+     * @return mixed data which can be serialized by <b>json_encode</b>,
+     * which is a value of any type other than a resource.
+     * @since 5.4.0
+     */
+    function jsonSerialize()
+    {
+        return [
+            'definition' => $this->definition,
+            'example'=>$this->example
+        ];
+    }
 }
