@@ -5,60 +5,54 @@ namespace App\Service;
 use App\Entity\Definition;
 use App\Entity\Example;
 use App\Entity\Word;
-use Doctrine\Common\Util\Inflector;
 use Doctrine\ORM\EntityManagerInterface;
-use GuzzleHttp\Client;
-use GuzzleHttp\Exception\ConnectException;
-use Symfony\Component\DomCrawler\Crawler;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use JMS\Serializer\SerializerBuilder;
 
 /**
- * Created by PhpStorm.
  * User: saeed
  * Date: 12/28/17
  * Time: 1:53 PM.
  */
-class OxfordDictionaryService implements DictionaryProviderInterface
+class OxfordDictionaryService extends AbstractDictionaryService
 {
-    private $oxfordDictionaryUrl = 'https://www.oxfordlearnersdictionaries.com/us/definition/american_english/';
+    protected $em;
 
-    private $em;
+    private $result;
 
-    public function __construct(EntityManagerInterface $em)
+    private $crawler;
+
+    public function __construct(EntityManagerInterface $entityManager, OxfordCrawler $crawler)
     {
-        $this->em = $em;
+        $this->crawler = $crawler;
+        $this->em = $entityManager;
     }
 
-    public function fetchPage($word)
+    public function translate($word)
     {
-        try {
-            $client = new Client();
-            $response = $client->get($this->oxfordDictionaryUrl.$word);
-            if ($response->getStatusCode() !== 200) {
-                throw new NotFoundHttpException('word you\'re looking for not found');
-            }
+        $word = $this->normalizeWord($word);
+        $this->result = $this->crawler->setWord($word)->crawl()->getResult();
 
-            return $response->getBody()->getContents();
-        } catch (ConnectException $clientException) {
-            return file_get_contents($this->oxfordDictionaryUrl.$word);
-        } catch (\Exception $exception) {
-            throw new $exception('Word not found');
-        }
+        return $this;
     }
 
-    /**
-     * @param $content
-     *
-     * @return Word
-     */
-    public function crawlContent($content)
+    public function getResultAsJson()
     {
-        $crawler = new Crawler($content);
+        $serializer = SerializerBuilder::create()->build();
+        return $serializer->serialize($this->getResultAsObject(), 'json');
+    }
+
+    public function getResultAsObject()
+    {
+        return $this->fillWord();
+    }
+
+    public function fillWord()
+    {
         $word = new Word();
-
-        $word->setWord($crawler->filter('div.webtop-g h2')->text());
-        $word->setPartsOfSpeech($crawler->filter('div.webtop-g span.pos')->text());
-        $word->setPronunciation($crawler->filter('div.pron-gs')->text());
+        $result = $this->result;
+        $word->setWord($result['word']);
+        $word->setPartsOfSpeech($result['partsOfSpeech']);
+        $word->setPronunciation($result['pronunciation']);
         $word->setSavedFrom(Word::SOURCE_OXFORD);
         $word->setSource(Word::SOURCE_OXFORD);
         $word->setUpdatedAt(new \DateTime());
@@ -66,57 +60,32 @@ class OxfordDictionaryService implements DictionaryProviderInterface
         $this->em->persist($word);
         $this->em->flush();
 
-        $crawler->filter('#entryContent ol .sn-g')->each(function (Crawler $node, $i) use ($word) {
+        foreach ($result['definitions'] as $def => $examples) {
             $definition = new Definition();
-            $definition->setDefinition($node->filter('span.def')->text());
+            $definition->setDefinition($def);
             $definition->setWord($word);
             $definition->setCreatedAt(new \DateTime());
             $definition->setUpdatedAt(new \DateTime());
             $this->em->persist($definition);
             $this->em->flush();
 
-            $node->filter('span.x-gs span.x-g')->each(function (Crawler $span, $i) use ($definition) {
-                $example = new Example();
-                $example->setExample($span->filter('span.x-g')->text());
-                $example->setDefinition($definition);
-                $example->setCreatedAt(new \DateTime());
-                $example->setUpdatedAt(new \DateTime());
-                $this->em->persist($example);
+            foreach ($examples as $example) {
+                $exampleEntity = new Example();
+                $exampleEntity->setExample($example);
+                $exampleEntity->setDefinition($definition);
+                $exampleEntity->setCreatedAt(new \DateTime());
+                $exampleEntity->setUpdatedAt(new \DateTime());
+                $this->em->persist($exampleEntity);
+
+                $definition->setExamples($exampleEntity);
+                $this->em->persist($definition);
                 $this->em->flush();
-                $definition->setExamples($example);
-            });
+            }
             $word->setDefinitions($definition);
-        });
-
-        return $word;
-    }
-
-    public function normalizeWord($word)
-    {
-        $word = Inflector::singularize($word);
-        $word = trim($word);
-        $word = strtolower($word);
-
-        return $word;
-    }
-
-    /**
-     * @param $word
-     *
-     * @return Word
-     */
-    public function translate($word)
-    {
-        $word = $this->normalizeWord($word);
-        $wordRepository = $this->em->getRepository('App\Entity\Word');
-        $wordEntity = $wordRepository->findOneBy([
-            'word' => $word,
-        ]);
-
-        if ($wordEntity === null) {
-            return $this->crawlContent($this->fetchPage($word));
+            $this->em->persist($word);
         }
 
-        return $wordEntity;
+        $this->em->flush();
+        return $word;
     }
 }

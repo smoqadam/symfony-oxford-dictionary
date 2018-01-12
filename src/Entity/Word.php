@@ -5,11 +5,12 @@ namespace App\Entity;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use JMS\Serializer\Annotation\Exclude;
+use JMS\Serializer\SerializerBuilder;
 
 /**
  * @ORM\Entity(repositoryClass="App\Repository\WordRepository")
  */
-class Word implements \JsonSerializable
+class Word
 {
     const SOURCE_OXFORD = 'oxford';
 
@@ -214,23 +215,9 @@ class Word implements \JsonSerializable
         $this->definitions->add($definitions);
     }
 
-    /**
-     * Specify data which should be serialized to JSON.
-     *
-     * @see http://php.net/manual/en/jsonserializable.jsonserialize.php
-     *
-     * @return mixed data which can be serialized by <b>json_encode</b>,
-     *               which is a value of any type other than a resource
-     *
-     * @since 5.4.0
-     */
-    public function jsonSerialize()
+    function __toString()
     {
-        return [
-            'word' => $this->word,
-            'pos' => $this->partsOfSpeech,
-            'definitions' => $this->definitions,
-            'pron' => $this->pronunciation,
-        ];
+        $serializer = SerializerBuilder::create()->build();
+        return $serializer->serialize($this, 'json');
     }
 }
