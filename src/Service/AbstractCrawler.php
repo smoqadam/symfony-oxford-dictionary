@@ -22,6 +22,8 @@ abstract class AbstractCrawler
 
     abstract public function crawl();
 
+    abstract public function setWord($word);
+
     abstract protected function getWord();
 
     protected function fetchPage()
