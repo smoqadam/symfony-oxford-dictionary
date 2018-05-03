@@ -35,6 +35,11 @@ class OxfordDictionaryService extends AbstractDictionaryService
         return $this;
     }
 
+    public function getResult()
+    {
+        return $this->result;
+    }
+
     public function getResultAsJson()
     {
         $serializer = SerializerBuilder::create()->build();

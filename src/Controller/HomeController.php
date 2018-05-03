@@ -3,7 +3,6 @@
 namespace App\Controller;
 
 use App\Entity\Word;
-use App\Service\AbstractDictionaryService;
 use App\Service\GoogleDictionaryService;
 use App\Service\OxfordDictionaryService;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
@@ -17,7 +16,7 @@ class HomeController extends Controller
     /**
      * @Route("/{word}", name="home")
      *
-     * @param AbstractDictionaryService $dictionaryService
+     * @param OxfordDictionaryService $dictionaryService
      * @param $word
      *
      * @return Response
@@ -31,7 +30,12 @@ class HomeController extends Controller
             ]);
 
             if ($result === null) {
-                $result = $dictionaryService->translate($word)->getResultAsJson();
+                $result = $dictionaryService->translate($word)->getResult();
+                if (isset($result['didYouMean'])) {
+                    $result = \GuzzleHttp\json_encode($result);
+                } else {
+                    $result = $dictionaryService->getResultAsObject();
+                }
             }
 
             return new Response($result, 200, [
@@ -41,7 +45,7 @@ class HomeController extends Controller
             return new JsonResponse(['The word you\'re looking for did not find'], 404);
         } catch (\Exception $exception) {
             return new JsonResponse([
-                'Something went wrong '.$exception->getMessage().'::'.$exception->getFile().'::'.$exception->getLine()], 500);
+                'Something went wrong '.$exception->getMessage().'::'.$exception->getFile().'::'.$exception->getLine(), ], 500);
         }
     }
 
@@ -71,7 +75,7 @@ class HomeController extends Controller
             return new JsonResponse(['The word you\'re looking for did not find'], 404);
         } catch (\Exception $exception) {
             return new JsonResponse([
-                'Something went wrong '.$exception->getMessage().'::'.$exception->getFile().'::'.$exception->getLine()], 500);
+                'Something went wrong '.$exception->getMessage().'::'.$exception->getFile().'::'.$exception->getLine(), ], 500);
         }
     }
 }

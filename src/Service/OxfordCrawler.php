@@ -10,18 +10,28 @@ class OxfordCrawler extends AbstractCrawler
 
     public function crawl()
     {
-        $crawler = new Crawler($this->fetchPage());
-        $result['word'] = $crawler->filter('div.webtop-g h2')->text();
-        $result['partsOfSpeech'] = $crawler->filter('div.webtop-g span.pos')->text();
-        $result['pronunciation'] = $crawler->filter('div.pron-gs')->text();
-        $result['definitions'] = [];
+        try {
+            $pageResult = $this->fetchPage();
+            $crawler = new Crawler($pageResult);
+            $result['word'] = $crawler->filter('div.webtop-g h2')->text();
+            $result['partsOfSpeech'] = $crawler->filter('div.webtop-g span.pos')->text();
+            $result['pronunciation'] = $crawler->filter('div.pron-gs')->text();
+            $result['definitions'] = [];
 
-        $crawler->filter('#entryContent ol .sn-g')->each(function (Crawler $node, $i) use (&$result) {
-            $definition = $node->filter('span.def')->text();
-            $node->filter('span.x-gs span.x-g')->each(function (Crawler $span, $i) use (&$result, &$definition) {
-                $result['definitions'][$definition][] = $span->filter('span.x-g')->text();
+            $crawler->filter('#entryContent ol .sn-g')->each(function (Crawler $node, $i) use (&$result) {
+                $definition = $node->filter('span.def')->text();
+                $node->filter('span.x-gs span.x-g')->each(function (Crawler $span, $i) use (&$result, &$definition) {
+                    $result['definitions'][$definition][] = $span->filter('span.x-g')->text();
+                });
             });
-        });
+        } catch (\InvalidArgumentException $exception) {
+            $resultList = $crawler->filter('ul.result-list li');
+            foreach ($resultList as $list) {
+                $result['didYouMean'][] = $list->textContent;
+            }
+        } catch (\Exception $exception){
+            throw $exception;
+        }
 
         $this->setResult($result);
 
