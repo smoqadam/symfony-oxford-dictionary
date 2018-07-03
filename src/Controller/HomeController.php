@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\User;
 use App\Entity\Word;
 use App\Service\GoogleDictionaryService;
 use App\Service\OxfordDictionaryService;
@@ -10,6 +11,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\Encoder\UserPasswordEncoderInterface;
 
 class HomeController extends Controller
 {
@@ -77,5 +79,23 @@ class HomeController extends Controller
             return new JsonResponse([
                 'Something went wrong '.$exception->getMessage().'::'.$exception->getFile().'::'.$exception->getLine(), ], 500);
         }
+    }
+
+    /**
+     * @Route("/user/register", name="register")
+     */
+    public function register(UserPasswordEncoderInterface $encoder)
+    {
+        $user = new User();
+        $user->setPassword($encoder->encodePassword($user, '123456'));
+        $user->setUsername('saeed');
+        $user->setEmail('saeed@saeed.com');
+        $em = $this->getDoctrine()->getManager();
+        $em->persist($user);
+        $em->flush();
+
+        return new JsonResponse([
+            'msg' => 'ok'
+        ]);
     }
 }
